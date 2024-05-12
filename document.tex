@@ -71,7 +71,7 @@
   {\calculategrandtotal{\qty}{\desc}{\rate}}
 
 % Sets general invoicenumber, client name, and overall total
-\DTLassign{invoice}{1}{\invoiceNumber=invoiceNumber,\client=client,\total=subtotal}
+\DTLassign{invoice}{1}{\invoiceNumber=invoiceNumber,\client=client}
 
 \begin{tblr}{X[7,l]X[3,l]X[2,r]}
   Logan Reed & &  \\
@@ -87,28 +87,8 @@
   & \large{Amount Due (USD)} & \large{\getgrandtotal}
 \end{tblr}
 
-\vspace{3em}
+\vspace{5em}
 
-
-% \ExplSyntaxOn
-% \tl_new:N \tblrbody
-% \tl_build_begin:N \tblrbody
-%   \DTLforeach{invoice}{
-%     \desc=desc,
-%     \rate=rate,
-%     \qty=qty,
-%     \subtotal=subtotal}{
-%     \tl_build_put_right:Ne \tblrbody { \exp_not:V \desc & \exp_not:V \rate & \exp_not:V \qty & \exp_not:V \subtotal \\ }
-%   }
-% \tl_build_end:N \tblrbody
-% \ExplSyntaxOff
-% \begin{tblr}[expand=\tblrbody]{X[6,l]X[1,l]X[1,l]X[1,r]}
-%   \hline[2pt]
-%   Description & Rate & Qty & Line Total \\
-%   \\
-%   \tblrbody
-%   \hline
-% \end{tblr}
 
 \begin{tblr}{X[6,l]X[1,l]X[1,l]X[1,r]}
   \hline[2pt]
@@ -121,12 +101,6 @@
   \rate=rate}
   {\lineitem{\qty}{\desc}{\rate} \\
 }
-
-% Creates a line under the line items
-% \begin{tblr}{X[l]}
-  % \hline
-  % \\
-% \end{tblr}
 
 \vspace{5em}
 
