@@ -10,11 +10,22 @@
 \usepackage[colorlinks]{hyperref}
 \usepackage[left=1in,top=1in,right=1in,bottom=1in]{geometry} % Document margins
 \usepackage{graphicx}
-\usepackage{advdate}
 \usepackage{tabularray}
 \usepackage{ragged2e}
 \usepackage{ehhline}
 \usepackage{array}
+\usepackage{advdate} % used for due date
+\usepackage{datatool}
+\usepackage{fp}
+\usepackage{siunitx}
+
+
+\newcommand{\advanceday}[1][30]{
+\begingroup
+\AdvanceDate[#1]
+\today
+\endgroup
+}
 
 \hypersetup{
     urlcolor=blue
@@ -22,46 +33,113 @@
 
 \newcolumntype{R}[1]{>{\raggedleft\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
 
+\DTLsetseparator{|}
+
+\DTLloaddb{invoice}{\invoicePath}
+
+\def\grandtotal{0}
+\def\currentAmount{}
+\def\dollars#1{\SI[per-mode=symbol,group-separator={,}]{#1}[\$]{}}
+\def\getgrandtotal{\dollars{\grandtotal}}
+
+\def\calculategrandtotal#1#2#3{%%
+    \FPmul\currentAmount{#1}{#3}%%
+    \FPround\currentAmount{\currentAmount}{2}%%
+    \FPadd\grandtotal{\currentAmount}{\grandtotal}%%
+    \FPround\grandtotal{\grandtotal}{2}%%
+    %% make the `\grandtotal` available outside of environment.
+    \xdef\grandtotal{\grandtotal}%%
+}
+
+%% #1=quantity
+%% #2=description
+%% #3=price per item
+\def\lineitem#1#2#3{%%
+\begin{tblr}{X[6,l]X[1,l]X[1,l]X[1,r]}
+  #2 & #3 & #1 & \FPmul\currentAmount{#1}{#3}\FPround\currentAmount{\currentAmount}{2} \dollars{\currentAmount} \\
+\end{tblr}
+}
+
 \begin{document}
-	
 \thispagestyle{empty}
 
-\begin{tblr}{X[3,l]X[1,l]X[1,r]}
-  Logan Reed & Invoice Number & 0000004 \\
-  634 N. 13th St Unit 1 & Date of Issue & \MakeUppercase{\today} \\
-  Philadelphia, PA, 19123 & Due Date & \MakeUppercase{\today} \\
-  United States & \client & \\
-  +1 (512) 839 - 6662 & \rate & \qty \\
+%calculate grandtotal
+\DTLforeach{invoice}{
+    \desc=desc,
+    \qty=qty,
+    \rate=rate}
+  {\calculategrandtotal{\qty}{\desc}{\rate}}
+
+% Sets general invoicenumber, client name, and overall total
+\DTLassign{invoice}{1}{\invoiceNumber=invoiceNumber,\client=client,\total=subtotal}
+
+\begin{tblr}{X[7,l]X[3,l]X[2,r]}
+  Logan Reed & &  \\
+  634 N. 13th St Unit 1 & & \\
+  Philadelphia, PA, 19123 & & \\
+  United States & & \\
+  +1 (512) 839 - 6662 & & \\
+  \\
+  \client &  Invoice Number & \invoiceNumber \\
+  & Date of Issue & \today \\
+  & Due Date & \advanceday \\
+  \cline[2pt]{2-3}
+  & \large{Amount Due (USD)} & \large{\getgrandtotal}
 \end{tblr}
 
+\vspace{3em}
 
-% Header, for company, invoice info
-% \begin{tabularx}{\textwidth}{l X l}
-%    \hspace{-8pt} \multirow{5}{*}{\includegraphics[height=1.98cm]{logo.png}} & \textbf{Inter Astra Tutoring} & \hskip12pt\multirow{5}{*}{\begin{tabular}{r}\footnotesize\bf INVOICE \\[-0.8ex] \footnotesize TEST01 \\[-0.4ex] \footnotesize\bf DATE \\[-0.8ex] \footnotesize \MakeUppercase{\today} \\[-0.4ex] \footnotesize\bf DUE \\[-0.8ex] \footnotesize UPON RECEIPT OF SERVICES \end{tabular}}\hspace{-6pt} \\
-%    & Amy Fare & \\
-%    & amyfare.ca & \\
-%    & +x-xxx-xxx-xxxx & \\
-%    & me@example.com & \\
-% \end{tabularx} 
 
-\begin{tblr}{lccr}
-\hline
-Alpha & Beta & Gamma & Delta \\
-\hline
-Epsilon & Zeta & Eta & Theta \\
-\hline
-Iota & Kappa & Lambda & Mu \\
-\hline
+% \ExplSyntaxOn
+% \tl_new:N \tblrbody
+% \tl_build_begin:N \tblrbody
+%   \DTLforeach{invoice}{
+%     \desc=desc,
+%     \rate=rate,
+%     \qty=qty,
+%     \subtotal=subtotal}{
+%     \tl_build_put_right:Ne \tblrbody { \exp_not:V \desc & \exp_not:V \rate & \exp_not:V \qty & \exp_not:V \subtotal \\ }
+%   }
+% \tl_build_end:N \tblrbody
+% \ExplSyntaxOff
+% \begin{tblr}[expand=\tblrbody]{X[6,l]X[1,l]X[1,l]X[1,r]}
+%   \hline[2pt]
+%   Description & Rate & Qty & Line Total \\
+%   \\
+%   \tblrbody
+%   \hline
+% \end{tblr}
+
+\begin{tblr}{X[6,l]X[1,l]X[1,l]X[1,r]}
+  \hline[2pt]
+  Description & Rate & Qty & Line Total \\
 \end{tblr}
 
-\begin{tblr}{|l|l|l|l|}
-\hline
-\SetCell[r=4]{h,1.5cm} Multirow Cell One & Alpha &
-\SetCell[r=4]{f,1.5cm} Multirow Cell Two & Alpha \\
-& Beta & & Beta \\
-& Gamma & & Gamma \\
-& Delta & & Delta \\
-\hline
+\DTLforeach{invoice}{
+  \desc=desc,
+  \qty=qty,
+  \rate=rate}
+  {\lineitem{\qty}{\desc}{\rate} \\
+}
+
+% Creates a line under the line items
+% \begin{tblr}{X[l]}
+  % \hline
+  % \\
+% \end{tblr}
+
+\vspace{5em}
+
+
+\begin{tblr}{X[4,r]X[2,r]X[1,r]}
+
+  & Subtotal & \getgrandtotal \\
+  & Tax & 0.00 \\
+  \cline[1pt]{2-3}
+  & Total & \getgrandtotal \\
+  & Amount Paid & 0.00 \\
+  \cline{2-3}\cline{2-3} \\
+  & \large{Amount Due (USD)} & \large{\getgrandtotal}
 \end{tblr}
 
 \end{document}

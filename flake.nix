@@ -10,6 +10,8 @@
   outputs = { self, nixpkgs, flake-utils }:
     let
       rootName = "document";
+      dataName = "data";
+      dataFile = ./data.csv;
       outScriptName = "latex-demo-document";
     in
     flake-utils.lib.eachDefaultSystem (system:
@@ -26,10 +28,13 @@
             etoolbox
             advdate
             ehhline
+            datatool
+            fp
+            siunitx
             ;
         };
       # make variables more visible to defining them here
-      vars = [ "client" "rate" "qty" ];
+      vars = [ ];
       # expands to definitions like \def\sender{$1}, i.e. each variable
       # will be set to the command line argument at the variable's position.
       texvars = toString
@@ -55,7 +60,7 @@
                   TEXMFVAR="$DIR/.cache/texmf-var" \
                 latexmk -interaction=nonstopmode -pdf -lualatex \
                 -output-directory="$DIR" \
-                -pretex="\pdfvariable suppressoptionalinfo 512\relax${texvars}" \
+                -pretex="\pdfvariable suppressoptionalinfo 512\relax\def\invoicePath{${dataFile}}${texvars}" \
                 -usepretex ${rootName}.tex
               mv "$DIR/${rootName}.pdf" $RES
               rm -rf "$DIR"
@@ -66,6 +71,7 @@
             installPhase = ''
               mkdir -p $out/{bin,share}
               cp ${rootName}.tex $out/share/${rootName}.tex
+              cp ${dataName}.csv $out/share/${dataName}.csv
               cp ${outScriptName} $out/bin/${outScriptName}
               chmod u+x $out/bin/${outScriptName}
             '';
